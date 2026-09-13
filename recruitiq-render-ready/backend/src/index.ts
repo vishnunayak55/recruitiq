@@ -6,6 +6,7 @@ import { initializeDatabase } from './utils/db';
 import authRoutes from './routes/auth';
 import resumeRoutes from './routes/resumes';
 import paymentRoutes from './routes/payments';
+import statsRoutes from './routes/stats';
 
 dotenv.config();
 
@@ -24,14 +25,14 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 // Rate limiting
 const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 min
+  windowMs: 15 * 60 * 1000,
   max: 100,
   message: { error: 'Too many requests. Please try again later.' },
 });
 app.use('/api/', limiter);
 
 const uploadLimiter = rateLimit({
-  windowMs: 60 * 60 * 1000, // 1 hour
+  windowMs: 60 * 60 * 1000,
   max: 10,
   message: { error: 'Too many uploads. Please try again later.' },
 });
@@ -41,6 +42,7 @@ app.use('/api/resumes/upload', uploadLimiter);
 app.use('/api/auth', authRoutes);
 app.use('/api/resumes', resumeRoutes);
 app.use('/api/payments', paymentRoutes);
+app.use('/api/stats', statsRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {
