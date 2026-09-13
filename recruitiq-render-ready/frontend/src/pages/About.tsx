@@ -5,7 +5,8 @@ import { BrainCircuit, Target, Zap, Shield, Users } from 'lucide-react';
 const About = () => {
   return (
     <div className="min-h-screen bg-[#0a0a0f] pt-20 pb-16 px-4">
-      <div className="max-w-4xl mx-auto">
+      <div className="max-w-3xl mx-auto">
+
         {/* Hero */}
         <div className="text-center mb-16">
           <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-indigo-500 to-blue-600 mb-6">
@@ -13,7 +14,7 @@ const About = () => {
           </div>
           <h1 className="text-4xl font-bold text-white mb-4">About RecruitIQ</h1>
           <p className="text-zinc-400 text-lg max-w-2xl mx-auto leading-relaxed">
-            RecruitIQ is an AI-powered resume screening platform that helps job seekers understand exactly how their resume performs against ATS systems and real job requirements.
+            RecruitIQ is an AI-powered resume analysis platform that helps job seekers understand exactly how their resume performs against ATS systems and real job requirements.
           </p>
         </div>
 
@@ -36,17 +37,17 @@ const About = () => {
             {
               icon: <Zap size={20} className="text-blue-400" />,
               title: 'Instant Results',
-              desc: 'No waiting. Upload your resume and get a comprehensive ATS score, keyword analysis, and improvement plan in under 30 seconds.',
+              desc: 'No waiting. Upload your resume and get a comprehensive ATS score, keyword analysis, and improvement plan in seconds.',
             },
             {
               icon: <Shield size={20} className="text-emerald-400" />,
               title: 'Privacy First',
-              desc: 'Your resume data is yours. We never share or sell your data to recruiters or third parties. Your files are processed securely.',
+              desc: 'Your resume data is yours. We never share or sell your data to recruiters or third parties. Your files are processed securely and you can delete them anytime.',
             },
             {
               icon: <Users size={20} className="text-violet-400" />,
               title: 'Built for Everyone',
-              desc: 'Whether you\'re a fresher, mid-level professional, or senior executive — RecruitIQ adapts its analysis to your experience level.',
+              desc: "Whether you're a fresher, mid-level professional, or career changer — RecruitIQ adapts its analysis to your experience level and target role.",
             },
           ].map((v) => (
             <div key={v.title} className="bg-white/[0.02] border border-white/8 rounded-2xl p-6 hover:border-white/15 transition-colors">
@@ -59,21 +60,21 @@ const About = () => {
           ))}
         </div>
 
-        {/* Tech stack */}
-        <div className="bg-white/[0.02] border border-white/8 rounded-2xl p-8 mb-8">
-          <h2 className="text-xl font-bold text-white mb-4">Built With</h2>
-          <div className="flex flex-wrap gap-3">
-            {['React + TypeScript', 'Node.js + Express', 'PostgreSQL', 'Razorpay', 'Tailwind CSS', 'Vite'].map((tech) => (
-              <span key={tech} className="px-3 py-1.5 bg-indigo-500/10 border border-indigo-500/20 text-indigo-300 text-sm rounded-lg">
-                {tech}
-              </span>
-            ))}
-          </div>
+        {/* Privacy note */}
+        <div className="bg-white/[0.02] border border-white/8 rounded-2xl p-8 mb-12">
+          <h2 className="text-xl font-bold text-white mb-3">Your Data & Privacy</h2>
+          <p className="text-zinc-400 text-sm leading-relaxed mb-3">
+            Your resume is used only to generate the analysis you request. Results are stored securely in your account and you can delete them at any time from your history.
+          </p>
+          <p className="text-zinc-500 text-sm leading-relaxed">
+            RecruitIQ does not sell or share your resume data with third parties, recruiters, or employers.
+          </p>
         </div>
 
         {/* CTA */}
         <div className="text-center">
-          <h2 className="text-2xl font-bold text-white mb-4">Ready to get started?</h2>
+          <h2 className="text-2xl font-bold text-white mb-2">Analyze your resume for free</h2>
+          <p className="text-zinc-500 text-sm mb-6">No credit card required. Free plan available.</p>
           <div className="flex gap-4 justify-center">
             <Link to="/analyzer" className="px-6 py-3 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold rounded-xl transition-colors">
               Analyze My Resume
@@ -83,6 +84,7 @@ const About = () => {
             </Link>
           </div>
         </div>
+
       </div>
     </div>
   );
