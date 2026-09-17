@@ -392,46 +392,49 @@ CRITICAL:
     const safeCount = Math.max(1, Math.min(Number(count) || 5, 20));
 
     const raw = await callGemini(`
-Generate ${safeCount} interview questions based ONLY on this specific resume and job description.
+You are a senior technical interviewer. Generate ${safeCount} UNIQUE interview questions
+that are SPECIFICALLY tailored to this candidate's actual resume.
 
-Questions must relate to actual skills and experience found in the resume.
+STRICT RULES:
+- Read the resume carefully and extract: actual skills, tools, projects, experience, and education.
+- Every question MUST reference something actually written in the resume.
+- Do NOT ask generic questions like "Tell me about yourself" or "Where do you see yourself in 5 years".
+- Do NOT repeat similar questions.
+- Mix question types: technical (based on their actual skills), behavioral (based on their actual experience), situational (based on their actual projects).
+- Difficulty should progress: start easy, get harder.
 
 RESUME:
-${resumeText.substring(0, 1500)}
+---
+${resumeText.substring(0, 3000)}
+---
 
-JOB:
-${jobDescription.substring(0, 800)}
+JOB DESCRIPTION (if provided, tailor questions to this role):
+---
+${jobDescription ? jobDescription.substring(0, 1000) : 'Not provided — base questions only on resume'}
+---
 
 Return ONLY a valid JSON array with exactly ${safeCount} items.
 
-Format:
-
+Each item must follow this exact format:
 [
   {
     "id": 1,
     "type": "technical",
-    "difficulty": "medium",
-    "question": "<question based on actual resume content>",
-    "why_asked": "<why this is relevant to this candidate>",
-    "tip": "<specific answering tip>"
+    "difficulty": "easy",
+    "question": "<specific question referencing an actual skill/project/tool from the resume>",
+    "why_asked": "<explain why this question is relevant to THIS candidate specifically>",
+    "tip": "<specific tip for answering this question based on their resume>"
   }
 ]
 
-Allowed types:
-- technical
-- behavioral
-- situational
-
-Allowed difficulties:
-- easy
-- medium
-- hard
+Allowed types: technical, behavioral, situational
+Allowed difficulties: easy, medium, hard
 
 CRITICAL:
-- Return complete valid JSON only.
-- No markdown.
-- No extra text.
-- Do not invent technologies or experience.
+- Every question must be UNIQUE and different from the others.
+- Every question must reference something ACTUALLY in the resume.
+- Return ONLY valid JSON array — no markdown, no extra text.
+- Generate exactly ${safeCount} questions, no more, no less.
 `);
 
     const parsed = JSON.parse(raw);
