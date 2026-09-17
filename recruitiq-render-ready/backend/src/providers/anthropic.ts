@@ -93,10 +93,6 @@ const cleanJSON = (text: string): string => {
     .replace(/```\s*/g, '')
     .trim();
 
-  /*
-   * Sometimes Gemini may return extra text before/after JSON.
-   * Try to isolate the first JSON object or array.
-   */
   const firstObject = cleaned.indexOf('{');
   const firstArray = cleaned.indexOf('[');
 
@@ -162,34 +158,21 @@ const callGemini = async (prompt: string): Promise<string> => {
 
       console.log(`✅ Model ${modelName} worked`);
 
-      /*
-       * Remember the working model for this running process.
-       */
       process.env.GEMINI_MODEL = modelName;
 
       let cleaned = cleanJSON(text);
 
-      /*
-       * Validate JSON.
-       */
       try {
         JSON.parse(cleaned);
       } catch {
-        console.warn(
-          '⚠️ JSON appears incomplete — attempting repair...'
-        );
+        console.warn('⚠️ JSON appears incomplete — attempting repair...');
 
         cleaned = repairJSON(cleaned);
 
-        /*
-         * Validate after repair.
-         */
         try {
           JSON.parse(cleaned);
         } catch {
-          console.warn(
-            '⚠️ JSON repair was unsuccessful. Trying next model...'
-          );
+          console.warn('⚠️ JSON repair was unsuccessful. Trying next model...');
 
           lastError = new Error(
             `Gemini returned invalid JSON from model ${modelName}`
@@ -203,10 +186,6 @@ const callGemini = async (prompt: string): Promise<string> => {
     } catch (e: any) {
       const msg = e?.message || String(e);
 
-      /*
-       * Network errors should not silently continue through
-       * every model because the problem is connectivity.
-       */
       if (
         msg.includes('fetch failed') ||
         msg.includes('ECONNREFUSED') ||
@@ -219,13 +198,8 @@ const callGemini = async (prompt: string): Promise<string> => {
         );
       }
 
-      console.warn(
-        `⚠️ Model ${modelName} failed, trying next...`
-      );
-
-      console.warn(
-        `   Reason: ${msg.substring(0, 300)}`
-      );
+      console.warn(`⚠️ Model ${modelName} failed, trying next...`);
+      console.warn(`   Reason: ${msg.substring(0, 300)}`);
 
       lastError = e;
     }
@@ -247,9 +221,7 @@ class GeminiProvider implements AIProvider {
    * RESUME ATS ANALYSIS
    * ==========================================
    */
-  async analyzeResume(
-    resumeText: string
-  ): Promise<AnalysisResult> {
+  async analyzeResume(resumeText: string): Promise<AnalysisResult> {
 
     const raw = await callGemini(`
 You are a strict ATS resume analyst.
@@ -417,10 +389,7 @@ CRITICAL:
     count: number
   ): Promise<any[]> {
 
-    const safeCount = Math.max(
-      1,
-      Math.min(Number(count) || 5, 20)
-    );
+    const safeCount = Math.max(1, Math.min(Number(count) || 5, 20));
 
     const raw = await callGemini(`
 Generate ${safeCount} interview questions based ONLY on this specific resume and job description.
@@ -466,10 +435,7 @@ CRITICAL:
 `);
 
     const parsed = JSON.parse(raw);
-
-    return Array.isArray(parsed)
-      ? parsed.slice(0, safeCount)
-      : [];
+    return Array.isArray(parsed) ? parsed.slice(0, safeCount) : [];
   }
 
 
@@ -484,11 +450,10 @@ CRITICAL:
   ): Promise<any> {
 
     const raw = await callGemini(`
-Create a career roadmap based on this specific resume
-to reach the target role.
+Create a detailed career roadmap for someone who wants to become a "${targetRole}".
 
-Base the gap analysis and milestones on skills actually
-present and missing from the resume.
+Analyze the resume to identify current skill level and gaps.
+Then generate a structured roadmap from Beginner → Intermediate → Advanced.
 
 RESUME:
 ${resumeText.substring(0, 2000)}
@@ -503,72 +468,108 @@ Return ONLY valid JSON using this exact structure:
 
   "target_role": "${targetRole}",
 
-  "estimated_time": "<realistic timeline based on actual gaps>",
+  "estimated_time": "<realistic total timeline e.g. 6-12 months>",
 
   "gap_analysis": "<specific gaps identified by comparing resume to target role requirements>",
 
   "milestones": [
     {
       "phase": 1,
-      "title": "<phase title>",
-      "duration": "<realistic duration>",
+      "level": "Beginner",
+      "title": "Foundation — Core Concepts",
+      "duration": "1-2 months",
       "skills_to_learn": [
-        "<skill actually missing from resume>"
+        "<fundamental skill 1 needed for ${targetRole}>",
+        "<fundamental skill 2>",
+        "<fundamental skill 3>"
       ],
       "actions": [
-        "<concrete action>"
+        "<concrete beginner action e.g. Complete Python basics course>",
+        "<build a simple project>",
+        "<action>"
       ],
       "resources": [
-        "<specific resource>"
+        { "name": "GeeksforGeeks", "url": "https://www.geeksforgeeks.org", "type": "article" },
+        { "name": "freeCodeCamp", "url": "https://www.freecodecamp.org", "type": "course" },
+        { "name": "W3Schools", "url": "https://www.w3schools.com", "type": "reference" },
+        { "name": "YouTube", "url": "https://www.youtube.com", "type": "video" }
       ]
     },
 
     {
       "phase": 2,
-      "title": "<phase title>",
-      "duration": "<realistic duration>",
+      "level": "Intermediate",
+      "title": "Building — Real Projects",
+      "duration": "2-3 months",
       "skills_to_learn": [
-        "<skill>"
+        "<intermediate skill 1 for ${targetRole}>",
+        "<intermediate skill 2>",
+        "<intermediate skill 3>"
       ],
       "actions": [
+        "<build a real project using the skills>",
+        "<contribute to open source or build portfolio>",
         "<action>"
       ],
       "resources": [
-        "<resource>"
+        { "name": "GeeksforGeeks", "url": "https://www.geeksforgeeks.org", "type": "article" },
+        { "name": "Coursera", "url": "https://www.coursera.org", "type": "course" },
+        { "name": "Udemy", "url": "https://www.udemy.com", "type": "course" },
+        { "name": "GitHub", "url": "https://www.github.com", "type": "practice" }
       ]
     },
 
     {
       "phase": 3,
-      "title": "<phase title>",
-      "duration": "<duration>",
+      "level": "Advanced",
+      "title": "Mastery — Industry Ready",
+      "duration": "2-4 months",
       "skills_to_learn": [
-        "<skill>"
+        "<advanced skill 1 for ${targetRole}>",
+        "<advanced skill 2>",
+        "<advanced skill 3>"
       ],
       "actions": [
+        "<build a production-level project>",
+        "<apply for jobs or internships>",
         "<action>"
       ],
       "resources": [
-        "<resource>"
+        { "name": "GeeksforGeeks", "url": "https://www.geeksforgeeks.org", "type": "article" },
+        { "name": "LeetCode", "url": "https://www.leetcode.com", "type": "practice" },
+        { "name": "Official Documentation", "url": "https://www.google.com", "type": "docs" },
+        { "name": "Medium", "url": "https://www.medium.com", "type": "article" }
       ]
     }
   ],
 
   "certifications": [
-    "<relevant certification for target role>"
+    "<relevant certification for ${targetRole} e.g. AWS, Google, Meta>",
+    "<certification 2>"
   ],
 
-  "salary_range": "<realistic salary range in INR for target role>",
+  "salary_range": "<realistic salary range in INR for ${targetRole} in India>",
 
   "key_companies": [
-    "<company hiring for this role>"
+    "<top company hiring for ${targetRole} in India>"
+  ],
+
+  "top_skills_needed": [
+    "<most important skill for ${targetRole}>",
+    "<skill 2>",
+    "<skill 3>",
+    "<skill 4>",
+    "<skill 5>"
   ]
 }
 
 CRITICAL:
 - Return ONLY valid JSON.
-- Base the roadmap on actual resume content.
-- Do not invent current skills.
+- Make the roadmap specific to "${targetRole}" — not generic.
+- Resources must include GeeksforGeeks, freeCodeCamp, and other real learning sites.
+- Skills must progress logically from beginner to advanced.
+- Base current level on the actual resume content.
+- Do not invent current skills not in the resume.
 `);
 
     return JSON.parse(raw);
@@ -580,9 +581,7 @@ CRITICAL:
    * RESUME WRITING QUALITY SCORE
    * ==========================================
    */
-  async generateResumeScore(
-    resumeText: string
-  ): Promise<any> {
+  async generateResumeScore(resumeText: string): Promise<any> {
 
     const raw = await callGemini(`
 Score this specific resume on multiple writing quality dimensions.
