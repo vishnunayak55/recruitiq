@@ -111,6 +111,7 @@ const Pricing = () => {
       }
 
       const { data: order } = await api.post('/payments/create-order', { plan: planKey });
+      console.log('✅ Order created:', order);
 
       const rzp = new window.Razorpay({
         key: order.key_id,
@@ -120,33 +121,41 @@ const Pricing = () => {
         description: `${order.plan_name} Plan — One Time Payment`,
         order_id: order.order_id,
         handler: async (response: any) => {
+          console.log('✅ Payment response received:', response);
           try {
-            await api.post('/payments/verify', {
+            console.log('📤 Calling verify...');
+            const result = await api.post('/payments/verify', {
               razorpay_order_id: response.razorpay_order_id,
               razorpay_payment_id: response.razorpay_payment_id,
               razorpay_signature: response.razorpay_signature,
               plan: planKey,
             });
+            console.log('✅ Verify result:', result);
             await refreshUser();
+            console.log('✅ User refreshed');
             toast.success(`🎉 Welcome to ${planKey.charAt(0).toUpperCase() + planKey.slice(1)}!`);
             navigate('/dashboard');
           } catch (e: any) {
+            console.error('❌ Verify error:', e);
+            console.error('❌ Verify error response:', e?.response?.data);
             toast.error(e?.response?.data?.error || 'Payment verification failed. Contact support.');
           }
           setProcessing(null);
         },
         prefill: { email: user.email, name: user.name },
         theme: { color: '#6366f1' },
-        modal: { ondismiss: () => setProcessing(null) },
+        modal: { ondismiss: () => { console.log('⚠️ Payment modal dismissed'); setProcessing(null); } },
       });
 
-      rzp.on('payment.failed', () => {
+      rzp.on('payment.failed', (resp: any) => {
+        console.error('❌ Payment failed:', resp);
         toast.error('Payment failed. Please try again.');
         setProcessing(null);
       });
 
       rzp.open();
     } catch (e: any) {
+      console.error('❌ Order creation error:', e);
       toast.error(e?.response?.data?.error || 'Could not initiate payment. Please try again.');
       setProcessing(null);
     }
