@@ -308,7 +308,7 @@ const Pricing = () => {
           <p className="text-zinc-500 text-xs">
             PCI DSS compliant · SSL encrypted · No card details stored
             <br />
-            Questions? <a href="mailto:support@recruitiq.ai" className="text-indigo-400 hover:text-indigo-300 transition-colors">support@recruitiq.ai</a>
+            Questions? <a href="mailto:vinaisolution@gmail.com" className="text-indigo-400 hover:text-indigo-300 transition-colors">vinaisolution@gmail.com</a>
           </p>
         </div>
       </div>
