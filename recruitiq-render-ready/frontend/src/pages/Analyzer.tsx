@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useRef } from 'react';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Upload, FileText, X, Loader2, CheckCircle, AlertCircle, Target, ChevronDown, ChevronUp } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
@@ -25,30 +25,50 @@ const Analyzer = () => {
   const [jobLoading, setJobLoading] = useState(false);
   const [jobMatch, setJobMatch] = useState<any>(null);
 
-  // FIX 1: This ref prevents double-submit race condition.
-  // Unlike useState, setting a ref is synchronous, so a second click
-  // is blocked immediately before React even re-renders.
+  // Prevents a double-submit race condition. Setting a ref is synchronous,
+  // so a second click is blocked immediately, before React re-renders.
   const isSubmitting = useRef(false);
 
+  // Timers for the simulated progress steps, kept so they can be cleared.
+  const stepTimers = useRef<number[]>([]);
+
+  const clearSteps = () => {
+    stepTimers.current.forEach(t => window.clearTimeout(t));
+    stepTimers.current = [];
+  };
+
+  // Clear any pending timers if the component unmounts mid-upload.
+  useEffect(() => clearSteps, []);
+
   const validate = (f: File) => {
-    const ok = ['application/pdf', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'application/msword'];
-    if (!ok.includes(f.type) && !f.name.match(/\.(pdf|docx|doc)$/i)) { toast.error('Only PDF and DOCX supported'); return false; }
+    const ok = ['application/pdf', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
+    if (!ok.includes(f.type) && !f.name.match(/\.(pdf|docx)$/i)) { toast.error('Only PDF and DOCX supported'); return false; }
     if (f.size > 10 * 1024 * 1024) { toast.error('Max file size is 10MB'); return false; }
     return true;
   };
 
   const setValidFile = (f: File) => { if (validate(f)) { setFile(f); setError(''); setUpgradeRequired(false); setAnalysis(null); } };
-  const handleDrop = useCallback((e: React.DragEvent) => { e.preventDefault(); setDrag(false); const f = e.dataTransfer.files[0]; if (f) setValidFile(f); }, []);
 
-  const simulateSteps = () => [0, 1000, 2800, 4500, 6000].forEach((d, i) => setTimeout(() => setStep(i), d));
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setDrag(false);
+    if (uploading) return; // ignore drops while an analysis is running
+    const f = e.dataTransfer.files[0];
+    if (f) setValidFile(f);
+  }, [uploading]);
+
+  // Simulated progress. Stops at "Generating Report" and only moves to
+  // "Complete" when the server has actually responded.
+  const simulateSteps = () => {
+    clearSteps();
+    stepTimers.current = [0, 1000, 2800, 4500].map((d, i) => window.setTimeout(() => setStep(i), d));
+  };
 
   const handleUpload = async () => {
     if (!file) return;
     if (!user) { navigate('/login'); return; }
 
-    // FIX 1: Block any second call before the first one finishes.
-    // isSubmitting.current is set synchronously so it takes effect immediately,
-    // unlike setUploading(true) which only applies after React re-renders.
+    // Block any second call before the first one finishes.
     if (isSubmitting.current) return;
     isSubmitting.current = true;
 
@@ -60,18 +80,37 @@ const Analyzer = () => {
     }
     setUploading(true); setError(''); setUpgradeRequired(false); setStep(0); simulateSteps();
     try {
-      const fd = new FormData(); fd.append('resume', file);
-      const { data } = await api.post('/resumes/upload', fd, { headers: { 'Content-Type': 'multipart/form-data' } });
-      setAnalysis(data.analysis); setStep(4);
-      await refreshUser();
+      const fd = new FormData();
+      fd.append('resume', file);
+      // Don't set Content-Type manually: the browser adds it with the multipart boundary.
+      const { data } = await api.post('/resumes/upload', fd);
+
+      clearSteps();
+      setAnalysis(data.analysis);
+      setStep(4);
       toast.success('Analysis complete!');
+
+      // A failed user refresh should not turn a successful analysis into an error.
+      try { await refreshUser(); } catch { /* non-fatal */ }
     } catch (e: any) {
-      const msg = e?.response?.data?.error || 'Analysis failed. Please try again.';
-      setError(msg); setUpgradeRequired(!!e?.response?.data?.upgradeRequired);
-      toast.error(e?.response?.data?.upgradeRequired ? 'Free plan limit reached' : msg);
+      clearSteps();
+      console.error('Upload failed:', e?.response?.status, e?.response?.data || e?.message);
+
+      const status = e?.response?.status;
+      const resData = e?.response?.data;
+      let msg: string = resData?.error || resData?.message;
+      if (!msg) {
+        if (e?.code === 'ECONNABORTED') msg = 'The request timed out. The server may be waking up, so please try again in a minute.';
+        else if (!e?.response) msg = 'Could not reach the server. Check your connection and try again.';
+        else msg = `Analysis failed (HTTP ${status}). Please try again.`;
+      }
+
+      setError(msg);
+      setUpgradeRequired(!!resData?.upgradeRequired);
+      toast.error(resData?.upgradeRequired ? 'Free plan limit reached' : msg);
     } finally {
       setUploading(false);
-      // FIX 1: Reset so user can try again after a failed upload.
+      // Reset so the user can try again after a failed upload.
       isSubmitting.current = false;
     }
   };
@@ -123,7 +162,7 @@ const Analyzer = () => {
                 drag ? 'border-indigo-500 bg-indigo-500/5 cursor-copy' :
                 file ? 'border-emerald-500/30 bg-emerald-500/5 cursor-default' :
                 'border-white/12 hover:border-indigo-500/40 hover:bg-white/[0.02] cursor-pointer'}`}>
-              <input ref={fileRef} type="file" accept=".pdf,.docx,.doc" className="hidden" disabled={uploading}
+              <input ref={fileRef} type="file" accept=".pdf,.docx" className="hidden" disabled={uploading}
                 onChange={e => e.target.files?.[0] && setValidFile(e.target.files[0])} />
               {file ? (
                 <div className="space-y-3">
