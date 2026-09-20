@@ -4,20 +4,24 @@ import { FileText, TrendingUp, Target, Upload, ExternalLink, Trash2, Loader2, Re
 import { useAuth } from '../context/AuthContext';
 import api from '../lib/api';
 import toast from 'react-hot-toast';
+import ErrorState from '../components/ErrorState';
 
 const Dashboard = () => {
   const { user, refreshUser } = useAuth();
   const [analyses, setAnalyses] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
   const [deleting, setDeleting] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
+    setError(false);
     try {
       await refreshUser();
       const { data } = await api.get('/resumes');
       setAnalyses(data.analyses || []);
     } catch {
+      setError(true);
       toast.error('Failed to load dashboard');
     } finally {
       setLoading(false);
@@ -59,7 +63,7 @@ const Dashboard = () => {
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
           <div>
-            <h1 className="text-3xl font-black text-white">
+            <h1 className="text-2xl sm:text-3xl font-black text-white">
               Hey, {user?.name?.split(' ')[0]} 👋
             </h1>
             <p className="text-zinc-500 mt-1 text-sm">Here's your resume intelligence overview</p>
@@ -70,7 +74,7 @@ const Dashboard = () => {
               <RefreshCw size={15} className={loading ? 'animate-spin' : ''} />
             </button>
             <Link to="/analyzer"
-              className="inline-flex items-center gap-2 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl transition-colors text-sm">
+              className="inline-flex items-center gap-2 px-4 sm:px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl transition-colors text-sm">
               <Upload size={15} /> Analyze Resume
             </Link>
           </div>
@@ -78,7 +82,7 @@ const Dashboard = () => {
 
         {/* Free tier banner */}
         {user?.plan === 'free' && (
-          <div className={`mb-6 p-4 rounded-xl border flex items-center justify-between gap-4 ${
+          <div className={`mb-6 p-4 rounded-xl border flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
             left === 0 ? 'bg-red-500/8 border-red-500/15'
             : left === 1 ? 'bg-yellow-500/8 border-yellow-500/15'
             : 'glass'
@@ -92,14 +96,14 @@ const Dashboard = () => {
               <p className="text-zinc-500 text-xs mt-0.5">Upgrade to Pro for unlimited analyses</p>
             </div>
             <Link to="/pricing"
-              className="flex-shrink-0 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-bold rounded-lg transition-colors">
+              className="flex-shrink-0 w-full sm:w-auto text-center px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-bold rounded-lg transition-colors">
               Upgrade →
             </Link>
           </div>
         )}
 
         {/* Stats */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-8">
           {[
             {
               icon: <FileText size={18} className="text-indigo-400" />,
@@ -118,14 +122,14 @@ const Dashboard = () => {
               value: loading ? '—' : best || '—',
             },
           ].map(s => (
-            <div key={s.label} className="glass rounded-2xl p-5">
+            <div key={s.label} className="glass rounded-2xl p-4 sm:p-5">
               <div className="w-9 h-9 rounded-xl bg-white/5 flex items-center justify-center mb-3">{s.icon}</div>
-              <div className="text-2xl font-black text-white mb-0.5">{s.value}</div>
+              <div className="text-xl sm:text-2xl font-black text-white mb-0.5">{s.value}</div>
               <div className="text-zinc-500 text-xs">{s.label}</div>
               {s.sub && <div className="text-zinc-600 text-xs mt-0.5">{s.sub}</div>}
             </div>
           ))}
-          <div className="glass rounded-2xl p-5">
+          <div className="glass rounded-2xl p-4 sm:p-5">
             <div className="text-2xl mb-2">
               {user?.plan === 'premium' ? '👑' : user?.plan === 'pro' ? '⚡' : '🆓'}
             </div>
@@ -142,8 +146,8 @@ const Dashboard = () => {
 
         {/* Analyses table */}
         <div className="glass rounded-2xl overflow-hidden">
-          <div className="flex items-center justify-between px-6 py-4 border-b border-white/5">
-            <h2 className="text-white font-bold flex items-center gap-2">
+          <div className="flex items-center justify-between px-4 sm:px-6 py-4 border-b border-white/5">
+            <h2 className="text-white font-bold flex items-center gap-2 text-sm sm:text-base">
               <FileText size={16} className="text-indigo-400" /> Recent Analyses
             </h2>
             {analyses.length > 6 && (
@@ -157,8 +161,10 @@ const Dashboard = () => {
             <div className="flex items-center justify-center py-20">
               <Loader2 size={24} className="text-indigo-400 animate-spin" />
             </div>
+          ) : error ? (
+            <ErrorState message="Failed to load your analyses." onRetry={load} />
           ) : analyses.length === 0 ? (
-            <div className="text-center py-20 px-4">
+            <div className="text-center py-16 px-4">
               <div className="w-16 h-16 glass rounded-2xl flex items-center justify-center mx-auto mb-4">
                 <FileText size={24} className="text-zinc-600" />
               </div>
@@ -172,21 +178,21 @@ const Dashboard = () => {
           ) : (
             <div className="divide-y divide-white/5">
               {analyses.slice(0, 8).map(a => (
-                <div key={a.id} className="flex items-center justify-between px-6 py-4 hover:bg-white/[0.02] transition-colors">
+                <div key={a.id} className="flex items-center justify-between px-4 sm:px-6 py-4 hover:bg-white/[0.02] transition-colors gap-2">
                   <div className="flex items-center gap-3 min-w-0 flex-1">
                     <div className="w-9 h-9 rounded-xl bg-indigo-500/10 border border-indigo-500/15 flex items-center justify-center flex-shrink-0">
                       <FileText size={15} className="text-indigo-400" />
                     </div>
                     <div className="min-w-0">
-                      <p className="text-white text-sm font-medium truncate max-w-[180px] sm:max-w-xs">{a.file_name}</p>
+                      <p className="text-white text-sm font-medium truncate max-w-[140px] sm:max-w-xs">{a.file_name}</p>
                       <p className="text-zinc-600 text-xs mt-0.5">
                         {new Date(a.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
                       </p>
                     </div>
                   </div>
-                  <div className="flex items-center gap-3 flex-shrink-0 ml-4">
-                    <div className="hidden sm:block text-right">
-                      <div className={`text-lg font-black tabular-nums ${sc(a.overall_score)}`}>{a.overall_score}</div>
+                  <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
+                    <div className="text-right">
+                      <div className={`text-base sm:text-lg font-black tabular-nums ${sc(a.overall_score)}`}>{a.overall_score}</div>
                       <div className="text-zinc-600 text-xs">/100</div>
                     </div>
                     <span className={`hidden md:inline-flex px-2 py-1 text-xs rounded-lg border font-semibold ${sb(a.overall_score)}`}>
