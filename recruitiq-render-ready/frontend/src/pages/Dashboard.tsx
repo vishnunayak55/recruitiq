@@ -5,6 +5,9 @@ import { useAuth } from '../context/AuthContext';
 import api from '../lib/api';
 import toast from 'react-hot-toast';
 
+// Works whether the backend returns `id` or MongoDB's `_id`.
+const getId = (a: any): string => a.id ?? a._id;
+
 const Dashboard = () => {
   const { user } = useAuth();
   const [analyses, setAnalyses] = useState<any[]>([]);
@@ -15,19 +18,26 @@ const Dashboard = () => {
     setLoading(true);
     try {
       const { data } = await api.get('/resumes');
-      setAnalyses(data.analyses || []);
-    } catch { toast.error('Failed to load dashboard'); }
-    finally { setLoading(false); }
+      setAnalyses(Array.isArray(data?.analyses) ? data.analyses : []);
+    } catch (e: any) {
+      console.error('Dashboard load failed:', e?.response?.status, e?.response?.data || e?.message);
+      toast.error('Failed to load dashboard');
+    } finally { setLoading(false); }
   }, []);
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => { load(); }, [load]);
 
   const handleDelete = async (id: string) => {
     if (!window.confirm('Delete this analysis?')) return;
     setDeleting(id);
-    try { await api.delete(`/resumes/${id}`); setAnalyses(p => p.filter(a => a.id !== id)); toast.success('Deleted'); }
-    catch { toast.error('Delete failed'); }
-    finally { setDeleting(null); }
+    try {
+      await api.delete(`/resumes/${id}`);
+      setAnalyses(p => p.filter(a => getId(a) !== id));
+      toast.success('Deleted');
+    } catch (e: any) {
+      console.error('Delete failed:', e?.response?.status, e?.response?.data || e?.message);
+      toast.error('Delete failed');
+    } finally { setDeleting(null); }
   };
 
   const avg = analyses.length ? Math.round(analyses.reduce((s, a) => s + (a.overall_score || 0), 0) / analyses.length) : 0;
@@ -119,32 +129,35 @@ const Dashboard = () => {
             </div>
           ) : (
             <div className="divide-y divide-white/5">
-              {analyses.slice(0, 8).map(a => (
-                <div key={a.id} className="flex items-center justify-between px-6 py-4 hover:bg-white/[0.02] transition-colors">
-                  <div className="flex items-center gap-3 min-w-0 flex-1">
-                    <div className="w-9 h-9 rounded-xl bg-indigo-500/10 border border-indigo-500/15 flex items-center justify-center flex-shrink-0">
-                      <FileText size={15} className="text-indigo-400" />
+              {analyses.slice(0, 8).map(a => {
+                const id = getId(a);
+                return (
+                  <div key={id} className="flex items-center justify-between px-6 py-4 hover:bg-white/[0.02] transition-colors">
+                    <div className="flex items-center gap-3 min-w-0 flex-1">
+                      <div className="w-9 h-9 rounded-xl bg-indigo-500/10 border border-indigo-500/15 flex items-center justify-center flex-shrink-0">
+                        <FileText size={15} className="text-indigo-400" />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-white text-sm font-medium truncate max-w-[180px] sm:max-w-xs">{a.file_name}</p>
+                        <p className="text-zinc-600 text-xs mt-0.5">{new Date(a.created_at).toLocaleDateString('en-IN', { day:'numeric', month:'short', year:'numeric' })}</p>
+                      </div>
                     </div>
-                    <div className="min-w-0">
-                      <p className="text-white text-sm font-medium truncate max-w-[180px] sm:max-w-xs">{a.file_name}</p>
-                      <p className="text-zinc-600 text-xs mt-0.5">{new Date(a.created_at).toLocaleDateString('en-IN', { day:'numeric', month:'short', year:'numeric' })}</p>
+                    <div className="flex items-center gap-3 flex-shrink-0 ml-4">
+                      <div className="hidden sm:block text-right">
+                        <div className={`text-lg font-black tabular-nums ${sc(a.overall_score)}`}>{a.overall_score}</div>
+                        <div className="text-zinc-600 text-xs">/100</div>
+                      </div>
+                      <span className={`hidden md:inline-flex px-2 py-1 text-xs rounded-lg border font-semibold ${sb(a.overall_score)}`}>
+                        {a.overall_score >= 80 ? 'Strong' : a.overall_score >= 60 ? 'Good' : 'Improve'}
+                      </span>
+                      <Link to={`/report/${id}`} className="p-2 text-zinc-500 hover:text-indigo-400 rounded-lg hover:bg-white/5 transition-colors"><ExternalLink size={14} /></Link>
+                      <button onClick={() => handleDelete(id)} disabled={deleting === id} className="p-2 text-zinc-600 hover:text-red-400 rounded-lg hover:bg-red-500/5 transition-colors disabled:opacity-40">
+                        {deleting === id ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
+                      </button>
                     </div>
                   </div>
-                  <div className="flex items-center gap-3 flex-shrink-0 ml-4">
-                    <div className="hidden sm:block text-right">
-                      <div className={`text-lg font-black tabular-nums ${sc(a.overall_score)}`}>{a.overall_score}</div>
-                      <div className="text-zinc-600 text-xs">/100</div>
-                    </div>
-                    <span className={`hidden md:inline-flex px-2 py-1 text-xs rounded-lg border font-semibold ${sb(a.overall_score)}`}>
-                      {a.overall_score >= 80 ? 'Strong' : a.overall_score >= 60 ? 'Good' : 'Improve'}
-                    </span>
-                    <Link to={`/report/${a.id}`} className="p-2 text-zinc-500 hover:text-indigo-400 rounded-lg hover:bg-white/5 transition-colors"><ExternalLink size={14} /></Link>
-                    <button onClick={() => handleDelete(a.id)} disabled={deleting === a.id} className="p-2 text-zinc-600 hover:text-red-400 rounded-lg hover:bg-red-500/5 transition-colors disabled:opacity-40">
-                      {deleting === a.id ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
-                    </button>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>
