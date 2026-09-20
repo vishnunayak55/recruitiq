@@ -21,11 +21,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    const token = localStorage.getItem('token');
-    if (!token) { setLoading(false); return; }
-    refreshUser().finally(() => setLoading(false));
-  }, []);
+  const logout = () => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    setUser(null);
+  };
 
   const refreshUser = async () => {
     try {
@@ -33,8 +33,28 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       if (data.token) localStorage.setItem('token', data.token);
       setUser(data.user);
       localStorage.setItem('user', JSON.stringify(data.user));
-    } catch { logout(); }
+    } catch {
+      logout();
+    }
   };
+
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      setLoading(false);
+      return;
+    }
+
+    // Fallback: if API hangs beyond 10s, unblock the app
+    const fallbackTimer = setTimeout(() => {
+      setLoading(false);
+    }, 10000);
+
+    refreshUser().finally(() => {
+      clearTimeout(fallbackTimer);
+      setLoading(false);
+    });
+  }, []);
 
   const login = async (email: string, password: string) => {
     const { data } = await api.post('/auth/login', { email, password });
@@ -48,13 +68,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setUser(data.user);
   };
 
-  const logout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-    setUser(null);
-  };
-
-  return <AuthContext.Provider value={{ user, loading, login, signup, logout, refreshUser }}>{children}</AuthContext.Provider>;
+  return (
+    <AuthContext.Provider value={{ user, loading, login, signup, logout, refreshUser }}>
+      {children}
+    </AuthContext.Provider>
+  );
 };
 
 export const useAuth = () => {
